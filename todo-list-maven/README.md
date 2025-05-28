@@ -1,4 +1,3 @@
-
 # 📝 ToDo List App (Java + Swing + Maven)
 
 Ứng dụng quản lý công việc cá nhân với giao diện đơn giản, dễ sử dụng, được phát triển bằng Java Swing theo mô hình MVC.
@@ -23,29 +22,43 @@
 ### 1. Clone project
 
 ```bash
-git clone https://github.com/your-username/todo-list-maven.git
+git clone https://github.com/ngocbinh15/todo-list-maven.git
 cd todo-list-maven
 ```
 
 ### 2. Build bằng Maven
 
+#### Biên dịch dự án
+
 ```bash
-mvn clean install
+mvn clean compile
+```
+
+#### Đóng gói thành file JAR
+
+```bash
+mvn clean package
+```
+
+#### Chạy file JAR
+
+```bash
+java -jar target/todo-list-app-1.0.0-jar-with-dependencies.jar
 ```
 
 ### 3. Chạy ứng dụng
 
 ```bash
-mvn exec:java -Dexec.mainClass="com.todoapp.ToDoListApp"
+mvn exec:java
 ```
 
 > 💡 Nếu bạn dùng IDE như IntelliJ IDEA hoặc Eclipse, có thể mở project như một Maven project và chạy trực tiếp từ `ToDoListApp.java`.
 
 ## 🖼 Giao diện
 
-| Main Window | Task Dialog | Date Picker |
-|-------------|-------------|-------------|
-| *(Chèn ảnh minh họa vào đây)* | *(Chèn ảnh minh họa vào đây)* | *(Chèn ảnh minh họa vào đây)* |
+| Main Window            | Task Dialog              | Date Picker              |
+| ---------------------- | ------------------------ | ------------------------ |
+| ![alt text](image.png) | ![alt text](image-1.png) | ![alt text](image-2.png) |
 
 ## 📁 Cấu trúc dự án
 
