@@ -1,0 +1,30 @@
+# Todo List App Data
+# Format: TaskName|DueDate|Priority|Status|IsPinned
+# Generated: 2025-06-01 00:09:52
+
+Task Name||Priority|Status|false
+Complete project proposal|2025-06-10|High|Pending|false
+Study for certification exam|2025-05-30|High|In Progress|false
+Update personal website|2025-06-20|Medium|Pending|false
+Weekly team meeting|2025-06-03|Medium|Pending|false
+Renew gym membership|2025-07-01|Low|Pending|false
+Fix printer issues|2025-05-29|Medium|Completed|false
+Call internet provider|2025-05-31|High|Pending|false
+Submit expense report|2025-06-05|Medium|In Progress|false
+Review quarterly goals|2025-06-15|High|Pending|false
+Schedule dentist appointment|2025-07-10|Low|Pending|false
+Back up work files|2025-06-01|Medium|Completed|false
+Research summer vacation destinations|2025-06-25|Low|In Progress|false
+Update resume|2025-07-15|Medium|Pending|false
+Clean up email inbox|2025-05-28|Low|Pending|false
+Return library books|2025-06-02|Medium|Pending|false
+Task Name||Priority|Status|false
+Complete Java assignment|2025-05-28|High|Pending|false
+Buy groceries|2025-05-26|Medium|Pending|false
+Schedule dentist appointment|2025-06-15|Low|Pending|false
+Complete project documentation|2025-06-02|High|Completed|false
+Plan summer vacation|2025-07-15|Medium|In Progress|false
+Organize desktop files|2025-05-10|Low|Completed|false
+Urgent client meeting preparation|2025-05-27|High|In Progress|false
+Research new software tools|2025-05-30|Medium|Pending|false
+gf|2025-05-31|Medium|Pending|false

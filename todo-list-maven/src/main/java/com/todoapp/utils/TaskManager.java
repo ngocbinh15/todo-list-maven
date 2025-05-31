@@ -1,157 +1,282 @@
 package com.todoapp.utils;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
-
-import javax.swing.table.DefaultTableModel;
 
 import com.todoapp.models.Task;
 
 /**
- * Utility class to manage tasks and provide serialization/deserialization
- * for saving and loading tasks from file
+ * Manager quản lý tasks trong bộ nhớ và đồng bộ với storage
+ * Cung cấp CRUD operations và tracking changes
  */
 public class TaskManager {
-  private List<Task> tasks;
-  private LinkedHashSet<Integer> pinnedTaskRows;
+  private final List<Task> tasks;
+  private final TaskStorage taskStorage;
+  private boolean hasUnsavedChanges;
 
   public TaskManager() {
-    tasks = new ArrayList<>();
-    pinnedTaskRows = new LinkedHashSet<>();
+    this.tasks = new ArrayList<>();
+    this.taskStorage = new TaskStorage();
+    this.hasUnsavedChanges = false;
+
+    // Auto-load existing data if available
+    if (taskStorage.dataFileExists()) {
+      loadTasksFromFile();
+    }
   }
 
+  // ==================== TASK OPERATIONS ====================
+
   /**
-   * Load tasks from the table model
+   * Thêm task mới
    */
-  public void loadFromTableModel(DefaultTableModel model, LinkedHashSet<Integer> pinnedRows) {
-    tasks.clear();
-    pinnedTaskRows = new LinkedHashSet<>(pinnedRows);
-
-    for (int i = 0; i < model.getRowCount(); i++) {
-      String name = (String) model.getValueAt(i, 0);
-      String dueDate = (String) model.getValueAt(i, 1);
-      String priority = (String) model.getValueAt(i, 2);
-      String status = (String) model.getValueAt(i, 3);
-      boolean isPinned = pinnedTaskRows.contains(i);
-
-      Task task = new Task(name, dueDate, priority, status, isPinned);
+  public void addTask(Task task) {
+    if (task != null) {
       tasks.add(task);
+      markAsChanged();
     }
   }
 
   /**
-   * Save tasks to the table model
+   * Cập nhật task tại index
    */
-  public void saveToTableModel(DefaultTableModel model) {
-    // Clear the model
-    while (model.getRowCount() > 0) {
-      model.removeRow(0);
+  public void updateTask(int index, Task task) {
+    if (isValidIndex(index) && task != null) {
+      tasks.set(index, task);
+      markAsChanged();
+    }
+  }
+
+  /**
+   * Xóa task tại index
+   */
+  public void deleteTask(int index) {
+    if (isValidIndex(index)) {
+      tasks.remove(index);
+      markAsChanged();
+    }
+  }
+
+  /**
+   * Xóa tất cả tasks
+   */
+  public void clearAllTasks() {
+    tasks.clear();
+    markAsChanged();
+  }
+
+  /**
+   * Lấy task tại index
+   */
+  public Task getTask(int index) {
+    return isValidIndex(index) ? tasks.get(index) : null;
+  }
+
+  /**
+   * Lấy tất cả tasks (defensive copy)
+   */
+  public List<Task> getAllTasks() {
+    return new ArrayList<>(tasks);
+  }
+
+  /**
+   * Lấy số lượng tasks
+   */
+  public int getTaskCount() {
+    return tasks.size();
+  }
+
+  /**
+   * Kiểm tra có tasks hay không
+   */
+  public boolean isEmpty() {
+    return tasks.isEmpty();
+  }
+
+  // ==================== FILE OPERATIONS ====================
+
+  /**
+   * Lưu tasks vào file
+   */
+  public boolean saveTasksToFile() {
+    boolean saved = taskStorage.saveTasksToFile(tasks);
+    if (saved) {
+      hasUnsavedChanges = false;
+    }
+    return saved;
+  }
+
+  /**
+   * Tải tasks từ file
+   */
+  public boolean loadTasksFromFile() {
+    List<Task> loadedTasks = taskStorage.loadTasksFromFile();
+
+    if (loadedTasks != null) {
+      tasks.clear();
+      tasks.addAll(loadedTasks);
+      hasUnsavedChanges = false;
+      return !loadedTasks.isEmpty();
     }
 
-    // Add tasks to model
-    pinnedTaskRows.clear();
-    int index = 0;
+    return false;
+  }
+
+  /**
+   * Lưu danh sách tasks từ UI và đồng bộ với memory
+   */
+  public boolean saveTasksFromUIList(List<Task> uiTasks) {
+    if (uiTasks == null) {
+      return false;
+    }
+
+    boolean saved = taskStorage.saveTasksToFile(uiTasks);
+
+    if (saved) {
+      // Sync memory with UI data
+      tasks.clear();
+      tasks.addAll(uiTasks);
+      hasUnsavedChanges = false;
+    }
+
+    return saved;
+  }
+
+  // ==================== CHANGE TRACKING ====================
+
+  /**
+   * Kiểm tra có thay đổi chưa lưu
+   */
+  public boolean hasUnsavedChanges() {
+    return hasUnsavedChanges;
+  }
+
+  /**
+   * Đánh dấu có thay đổi
+   */
+  public void markAsChanged() {
+    hasUnsavedChanges = true;
+  }
+
+  /**
+   * Đánh dấu đã lưu
+   */
+  public void markAsSaved() {
+    hasUnsavedChanges = false;
+  }
+
+  // ==================== SEARCH & FILTER ====================
+
+  /**
+   * Tìm tasks theo tên
+   */
+  public List<Task> findTasksByName(String keyword) {
+    if (keyword == null || keyword.trim().isEmpty()) {
+      return getAllTasks();
+    }
+
+    List<Task> results = new ArrayList<>();
+    String searchTerm = keyword.toLowerCase().trim();
 
     for (Task task : tasks) {
-      model.addRow(new Object[] {
-          task.getName(),
-          task.getDueDate(),
-          task.getPriority(),
-          task.getStatus()
-      });
+      if (task.getName().toLowerCase().contains(searchTerm)) {
+        results.add(task);
+      }
+    }
 
+    return results;
+  }
+
+  /**
+   * Lấy tasks theo status
+   */
+  public List<Task> getTasksByStatus(String status) {
+    List<Task> results = new ArrayList<>();
+
+    for (Task task : tasks) {
+      if (status.equals(task.getStatus())) {
+        results.add(task);
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Lấy tasks theo priority
+   */
+  public List<Task> getTasksByPriority(String priority) {
+    List<Task> results = new ArrayList<>();
+
+    for (Task task : tasks) {
+      if (priority.equals(task.getPriority())) {
+        results.add(task);
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Lấy tasks đã pin
+   */
+  public List<Task> getPinnedTasks() {
+    List<Task> results = new ArrayList<>();
+
+    for (Task task : tasks) {
       if (task.isPinned()) {
-        pinnedTaskRows.add(index);
-      }
-
-      index++;
-    }
-  }
-
-  /**
-   * Save tasks to binary file
-   */
-  public boolean saveToBinaryFile(File file) {
-    try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
-      oos.writeObject(tasks);
-      return true;
-    } catch (IOException e) {
-      e.printStackTrace();
-      return false;
-    }
-  }
-
-  /**
-   * Load tasks from binary file
-   */
-  @SuppressWarnings("unchecked")
-  public boolean loadFromBinaryFile(File file) {
-    try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
-      tasks = (List<Task>) ois.readObject();
-
-      // Rebuild pinned set
-      pinnedTaskRows.clear();
-      for (int i = 0; i < tasks.size(); i++) {
-        if (tasks.get(i).isPinned()) {
-          pinnedTaskRows.add(i);
-        }
-      }
-
-      return true;
-    } catch (IOException | ClassNotFoundException e) {
-      e.printStackTrace();
-      return false;
-    }
-  }
-
-  /**
-   * Get all tasks
-   */
-  public List<Task> getTasks() {
-    return tasks;
-  }
-
-  /**
-   * Get pinned task indices
-   */
-  public LinkedHashSet<Integer> getPinnedTaskRows() {
-    return pinnedTaskRows;
-  }
-
-  /**
-   * Get tasks by date
-   */
-  public List<Task> getTasksByDate(String dateStr) {
-    List<Task> result = new ArrayList<>();
-
-    for (Task task : tasks) {
-      if (dateStr.equals(task.getDueDate())) {
-        result.add(task);
+        results.add(task);
       }
     }
 
-    return result;
+    return results;
+  }
+
+  // ==================== STATISTICS ====================
+
+  /**
+   * Lấy số tasks theo status
+   */
+  public int getTaskCountByStatus(String status) {
+    return (int) tasks.stream()
+        .filter(task -> status.equals(task.getStatus()))
+        .count();
   }
 
   /**
-   * Get overdue tasks
+   * Tính phần trăm hoàn thành
    */
-  public List<Task> getOverdueTasks() {
-    List<Task> result = new ArrayList<>();
-
-    for (Task task : tasks) {
-      if (task.isOverdue()) {
-        result.add(task);
-      }
+  public double getCompletionPercentage() {
+    if (tasks.isEmpty()) {
+      return 0.0;
     }
 
-    return result;
+    long completedCount = tasks.stream()
+        .filter(task -> "Completed".equals(task.getStatus()))
+        .count();
+
+    return (completedCount * 100.0) / tasks.size();
+  }
+
+  // ==================== UTILITY METHODS ====================
+
+  /**
+   * Kiểm tra index hợp lệ
+   */
+  private boolean isValidIndex(int index) {
+    return index >= 0 && index < tasks.size();
+  }
+
+  /**
+   * Lấy thông tin debug
+   */
+  public String getDebugInfo() {
+    return String.format("TaskManager: %d tasks, unsaved: %s",
+        tasks.size(), hasUnsavedChanges);
+  }
+
+  @Override
+  public String toString() {
+    return getDebugInfo();
   }
 }

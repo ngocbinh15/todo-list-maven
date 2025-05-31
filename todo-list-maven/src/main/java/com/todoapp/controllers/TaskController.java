@@ -8,7 +8,9 @@ import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.LinkedHashSet;
+import java.util.List;
 
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
@@ -17,10 +19,15 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
 
 import com.todoapp.components.TaskTable;
+import com.todoapp.models.Task;
 import com.todoapp.views.DatePickerDialog;
 import com.todoapp.views.MainWindow;
 import com.todoapp.views.TaskDialog;
 
+/**
+ * Controller để xử lý các thao tác với tasks
+ * Quản lý CRUD operations, import/export, sorting và filtering
+ */
 public class TaskController {
   private MainWindow mainWindow;
   private TaskTable taskTable;
@@ -34,18 +41,18 @@ public class TaskController {
     this.tableModel = taskTable.getTableModel();
     this.pinnedTaskRows = new LinkedHashSet<>();
 
-    // Khởi tạo RowSorter nếu cần
     if (taskTable.getRowSorter() != null &&
         taskTable.getRowSorter() instanceof TableRowSorter) {
       rowSorter = (TableRowSorter<DefaultTableModel>) taskTable.getRowSorter();
     }
 
-    // Thêm các listeners để bắt sự kiện từ TaskTable
     setupListeners();
   }
 
+  /**
+   * Thiết lập event listeners cho TaskTable
+   */
   private void setupListeners() {
-    // Bắt sự kiện từ TaskTable
     taskTable.addPropertyChangeListener(evt -> {
       if ("deleteTask".equals(evt.getPropertyName())) {
         int row = (Integer) evt.getNewValue();
@@ -60,27 +67,24 @@ public class TaskController {
     });
   }
 
+  // ==================== CRUD OPERATIONS ====================
+
   /**
-   * Thêm task mới
+   * Thêm task mới thông qua dialog
    */
   public void addTask() {
     TaskDialog dialog = new TaskDialog(mainWindow, "Add New Task", "", "", "Medium", "Pending");
     dialog.setVisible(true);
 
     if (dialog.isConfirmed()) {
-      // Lấy dữ liệu từ dialog
       String name = dialog.getTaskName();
       String dueDate = dialog.getDueDate();
       String priority = dialog.getPriority();
       String status = dialog.getStatus();
 
-      // Thêm vào model
       tableModel.addRow(new Object[] { name, dueDate, priority, status });
-
-      // Cập nhật số lượng task
       mainWindow.updateTaskCount();
 
-      // Hiển thị thông báo thành công
       JOptionPane.showMessageDialog(mainWindow,
           "Task added successfully!",
           "Success",
@@ -89,83 +93,75 @@ public class TaskController {
   }
 
   /**
-   * Sửa task
+   * Sửa task đã chọn
    */
   public void editTask(int viewRow) {
-    if (viewRow >= 0) {
-      // Chuyển đổi từ view row sang model row
-      int modelRow = taskTable.convertRowIndexToModel(viewRow);
-
-      // Lấy dữ liệu hiện tại
-      String currentTask = (String) tableModel.getValueAt(modelRow, 0);
-      String currentDate = (String) tableModel.getValueAt(modelRow, 1);
-      String currentPriority = (String) tableModel.getValueAt(modelRow, 2);
-      String currentStatus = (String) tableModel.getValueAt(modelRow, 3);
-
-      // Hiển thị dialog
-      TaskDialog dialog = new TaskDialog(mainWindow, "Edit Task",
-          currentTask, currentDate, currentPriority, currentStatus);
-      dialog.setVisible(true);
-
-      // Cập nhật dữ liệu nếu người dùng xác nhận
-      if (dialog.isConfirmed()) {
-        tableModel.setValueAt(dialog.getTaskName(), modelRow, 0);
-        tableModel.setValueAt(dialog.getDueDate(), modelRow, 1);
-        tableModel.setValueAt(dialog.getPriority(), modelRow, 2);
-        tableModel.setValueAt(dialog.getStatus(), modelRow, 3);
-
-        // Cập nhật số lượng task
-        mainWindow.updateTaskCount();
-      }
-    } else {
+    if (viewRow < 0) {
       JOptionPane.showMessageDialog(mainWindow,
           "Please select a task to edit.",
           "No Task Selected", JOptionPane.WARNING_MESSAGE);
+      return;
+    }
+
+    int modelRow = taskTable.convertRowIndexToModel(viewRow);
+
+    String currentTask = (String) tableModel.getValueAt(modelRow, 0);
+    String currentDate = (String) tableModel.getValueAt(modelRow, 1);
+    String currentPriority = (String) tableModel.getValueAt(modelRow, 2);
+    String currentStatus = (String) tableModel.getValueAt(modelRow, 3);
+
+    TaskDialog dialog = new TaskDialog(mainWindow, "Edit Task",
+        currentTask, currentDate, currentPriority, currentStatus);
+    dialog.setVisible(true);
+
+    if (dialog.isConfirmed()) {
+      tableModel.setValueAt(dialog.getTaskName(), modelRow, 0);
+      tableModel.setValueAt(dialog.getDueDate(), modelRow, 1);
+      tableModel.setValueAt(dialog.getPriority(), modelRow, 2);
+      tableModel.setValueAt(dialog.getStatus(), modelRow, 3);
+      mainWindow.updateTaskCount();
     }
   }
 
   /**
-   * Xóa task
+   * Xóa task đã chọn
    */
   public void deleteTask(int viewRow) {
-    if (viewRow >= 0) {
-      // Chuyển đổi từ view row sang model row
-      int modelRow = taskTable.convertRowIndexToModel(viewRow);
-      String taskName = (String) tableModel.getValueAt(modelRow, 0);
-
-      // Xác nhận xóa
-      int confirm = JOptionPane.showConfirmDialog(mainWindow,
-          "Are you sure you want to delete \"" + taskName + "\"?",
-          "Confirm Delete", JOptionPane.YES_NO_OPTION,
-          JOptionPane.QUESTION_MESSAGE);
-
-      if (confirm == JOptionPane.YES_OPTION) {
-        // Xóa task khỏi danh sách ghim nếu có
-        pinnedTaskRows.remove(modelRow);
-
-        // Cập nhật lại các mã hàng cho các task bị ảnh hưởng
-        for (Integer pinnedRow : new ArrayList<>(pinnedTaskRows)) {
-          if (pinnedRow > modelRow) {
-            pinnedTaskRows.remove(pinnedRow);
-            pinnedTaskRows.add(pinnedRow - 1);
-          }
-        }
-
-        // Xóa task
-        tableModel.removeRow(modelRow);
-
-        // Cập nhật số lượng task
-        mainWindow.updateTaskCount();
-      }
-    } else {
+    if (viewRow < 0) {
       JOptionPane.showMessageDialog(mainWindow,
           "Please select a task to delete.",
           "No Task Selected", JOptionPane.WARNING_MESSAGE);
+      return;
+    }
+
+    int modelRow = taskTable.convertRowIndexToModel(viewRow);
+    String taskName = (String) tableModel.getValueAt(modelRow, 0);
+
+    int confirm = JOptionPane.showConfirmDialog(mainWindow,
+        "Are you sure you want to delete \"" + taskName + "\"?",
+        "Confirm Delete", JOptionPane.YES_NO_OPTION,
+        JOptionPane.QUESTION_MESSAGE);
+
+    if (confirm == JOptionPane.YES_OPTION) {
+      pinnedTaskRows.remove(modelRow);
+
+      // Cập nhật lại index cho các pinned tasks
+      for (Integer pinnedRow : new ArrayList<>(pinnedTaskRows)) {
+        if (pinnedRow > modelRow) {
+          pinnedTaskRows.remove(pinnedRow);
+          pinnedTaskRows.add(pinnedRow - 1);
+        }
+      }
+
+      tableModel.removeRow(modelRow);
+      mainWindow.updateTaskCount();
     }
   }
 
+  // ==================== PIN & SORT OPERATIONS ====================
+
   /**
-   * Ghim/bỏ ghim task
+   * Chuyển đổi trạng thái pin của task
    */
   public void togglePinTask(int modelRow) {
     if (pinnedTaskRows.contains(modelRow)) {
@@ -174,10 +170,8 @@ public class TaskController {
       pinnedTaskRows.add(modelRow);
     }
 
-    // Cập nhật bảng hiển thị
     taskTable.updatePinnedTasks(pinnedTaskRows);
 
-    // Cập nhật sắp xếp
     if (rowSorter != null) {
       rowSorter.sort();
     }
@@ -193,7 +187,7 @@ public class TaskController {
   }
 
   /**
-   * Hiển thị dialog sắp xếp task
+   * Hiển thị dialog chọn cột để sắp xếp
    */
   public void showSortDialog() {
     String[] options = { "Task Name", "Due Date", "Priority", "Status" };
@@ -208,38 +202,35 @@ public class TaskController {
   }
 
   /**
-   * Filter tasks theo từ khóa
+   * Lọc tasks theo từ khóa
    */
   public void filterTasks(String keyword) {
     taskTable.filterTasks(keyword);
   }
 
+  // ==================== IMPORT/EXPORT OPERATIONS ====================
+
   /**
    * Export tasks ra file CSV
    */
   public void exportTasks() {
-    // Configure file chooser
     JFileChooser fileChooser = new JFileChooser();
     fileChooser.setDialogTitle("Export Tasks");
     fileChooser.setFileFilter(new FileNameExtensionFilter("CSV Files (*.csv)", "csv"));
 
-    // Show save dialog
     int choice = fileChooser.showSaveDialog(mainWindow);
 
     if (choice == JFileChooser.APPROVE_OPTION) {
       File file = fileChooser.getSelectedFile();
       String path = file.getAbsolutePath();
 
-      // Add .csv extension if not present
       if (!path.toLowerCase().endsWith(".csv")) {
         file = new File(path + ".csv");
       }
 
       try (PrintWriter writer = new PrintWriter(file)) {
-        // Write CSV header
         writer.println("Task,DueDate,Priority,Status,Pinned");
 
-        // Write tasks
         for (int i = 0; i < tableModel.getRowCount(); i++) {
           String task = (String) tableModel.getValueAt(i, 0);
           String dueDate = (String) tableModel.getValueAt(i, 1);
@@ -247,7 +238,6 @@ public class TaskController {
           String status = (String) tableModel.getValueAt(i, 3);
           boolean isPinned = pinnedTaskRows.contains(i);
 
-          // Write CSV row with comma escaping
           writer.println(
               escapeCSV(task) + "," +
                   escapeCSV(dueDate) + "," +
@@ -269,15 +259,6 @@ public class TaskController {
     }
   }
 
-  private String escapeCSV(String value) {
-    if (value == null)
-      return "";
-    if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
-      return "\"" + value.replace("\"", "\"\"") + "\"";
-    }
-    return value;
-  }
-
   /**
    * Import tasks từ file CSV
    */
@@ -296,7 +277,6 @@ public class TaskController {
         boolean isFirstLine = true;
         int addedCount = 0;
 
-        // Clear existing tasks
         int confirm = JOptionPane.showConfirmDialog(mainWindow,
             "Do you want to replace existing tasks or append imported tasks?",
             "Import Options", JOptionPane.YES_NO_CANCEL_OPTION);
@@ -304,30 +284,26 @@ public class TaskController {
         if (confirm == JOptionPane.CANCEL_OPTION) {
           return;
         } else if (confirm == JOptionPane.YES_OPTION) {
-          // Clear all existing tasks
           while (tableModel.getRowCount() > 0) {
             tableModel.removeRow(0);
           }
           pinnedTaskRows.clear();
         }
 
-        // Read CSV file
         while ((line = reader.readLine()) != null) {
           if (isFirstLine) {
             isFirstLine = false;
             if (line.startsWith("Task,")) {
-              continue; // Skip header row
+              continue;
             }
           }
 
-          // Parse CSV line
           String[] parts = parseCSVLine(line);
           if (parts.length >= 4) {
             tableModel.addRow(new Object[] {
                 parts[0], parts[1], parts[2], parts[3]
             });
 
-            // Check for pin status
             if (parts.length >= 5 && parts[4].trim().equalsIgnoreCase("true")) {
               pinnedTaskRows.add(tableModel.getRowCount() - 1);
             }
@@ -336,15 +312,12 @@ public class TaskController {
           }
         }
 
-        // Update pinned tasks
         taskTable.updatePinnedTasks(pinnedTaskRows);
 
-        // Re-sort if needed
         if (rowSorter != null) {
           rowSorter.sort();
         }
 
-        // Update task count
         mainWindow.updateTaskCount();
 
         JOptionPane.showMessageDialog(mainWindow,
@@ -360,6 +333,94 @@ public class TaskController {
     }
   }
 
+  // ==================== SAVE OPERATIONS ====================
+
+  /**
+   * Lưu tất cả tasks từ UI vào file data.txt
+   * Sử dụng cách tiếp cận tương tự export để đảm bảo tính nhất quán
+   */
+  public boolean saveTasksFromUI() {
+    System.out.println("=== SAVING TASKS FROM UI ===");
+
+    DefaultTableModel model = (DefaultTableModel) taskTable.getModel();
+    int rowCount = model.getRowCount();
+
+    if (rowCount == 0) {
+      System.err.println("No tasks to save");
+      return false;
+    }
+
+    File dataFile = new File(System.getProperty("user.dir"), "data.txt");
+
+    try (PrintWriter writer = new PrintWriter(dataFile, "UTF-8")) {
+      // Header
+      writer.println("# Todo List App Data");
+      writer.println("# Format: TaskName|DueDate|Priority|Status|IsPinned");
+      writer.println("# Generated: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+      writer.println();
+
+      int savedCount = 0;
+      for (int i = 0; i < rowCount; i++) {
+        try {
+          String taskName = (String) model.getValueAt(i, 0);
+          String dueDate = (String) model.getValueAt(i, 1);
+          String priority = (String) model.getValueAt(i, 2);
+          String status = (String) model.getValueAt(i, 3);
+
+          if (taskName == null || taskName.trim().isEmpty()) {
+            continue;
+          }
+
+          // Escape và format dữ liệu
+          taskName = taskName.replace("|", "\\|");
+          if (dueDate == null)
+            dueDate = "";
+          if (priority == null)
+            priority = "Medium";
+          if (status == null)
+            status = "Pending";
+
+          boolean isPinned = pinnedTaskRows != null && pinnedTaskRows.contains(i);
+
+          String line = taskName + "|" + dueDate + "|" + priority + "|" + status + "|" + isPinned;
+          writer.println(line);
+          savedCount++;
+
+        } catch (Exception e) {
+          System.err.println("Error saving row " + i + ": " + e.getMessage());
+        }
+      }
+
+      writer.flush();
+      System.out.println("Successfully saved " + savedCount + " tasks to: " + dataFile.getAbsolutePath());
+
+      syncUIToTaskManager();
+      return savedCount > 0;
+
+    } catch (IOException e) {
+      System.err.println("Error saving file: " + e.getMessage());
+      e.printStackTrace();
+      return false;
+    }
+  }
+
+  // ==================== UTILITY METHODS ====================
+
+  /**
+   * Escape ký tự đặc biệt cho CSV
+   */
+  private String escapeCSV(String value) {
+    if (value == null)
+      return "";
+    if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+      return "\"" + value.replace("\"", "\"\"") + "\"";
+    }
+    return value;
+  }
+
+  /**
+   * Parse dòng CSV với xử lý quotes
+   */
   private String[] parseCSVLine(String line) {
     ArrayList<String> result = new ArrayList<>();
     StringBuilder field = new StringBuilder();
@@ -369,17 +430,13 @@ public class TaskController {
       char c = line.charAt(i);
 
       if (c == '"') {
-        // Quote handling
         if (inQuotes && i + 1 < line.length() && line.charAt(i + 1) == '"') {
-          // Escaped quote
           field.append('"');
-          i++; // Skip the next quote
+          i++;
         } else {
-          // Start/end quote
           inQuotes = !inQuotes;
         }
       } else if (c == ',' && !inQuotes) {
-        // End of field
         result.add(field.toString());
         field.setLength(0);
       } else {
@@ -387,14 +444,90 @@ public class TaskController {
       }
     }
 
-    // Add the last field
     result.add(field.toString());
-
     return result.toArray(new String[0]);
   }
 
   /**
-   * Hiển thị dialog tiến độ
+   * Đồng bộ dữ liệu từ UI về TaskManager
+   */
+  private void syncUIToTaskManager() {
+    try {
+      DefaultTableModel model = (DefaultTableModel) taskTable.getModel();
+      List<Task> uiTasks = new ArrayList<>();
+
+      for (int i = 0; i < model.getRowCount(); i++) {
+        String name = (String) model.getValueAt(i, 0);
+        String dueDate = (String) model.getValueAt(i, 1);
+        String priority = (String) model.getValueAt(i, 2);
+        String status = (String) model.getValueAt(i, 3);
+
+        if (name != null && !name.trim().isEmpty()) {
+          Task task = new Task(name.trim());
+          task.setPriority(priority != null ? priority : "Medium");
+          task.setStatus(status != null ? status : "Pending");
+
+          if (dueDate != null && !dueDate.trim().isEmpty()) {
+            try {
+              SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+              task.setDueDate(dateFormat.parse(dueDate));
+            } catch (Exception e) {
+              // Ignore date parsing errors
+            }
+          }
+
+          if (pinnedTaskRows != null && pinnedTaskRows.contains(i)) {
+            task.setPinned(true);
+          }
+
+          uiTasks.add(task);
+        }
+      }
+
+      mainWindow.getTaskManager().clearAllTasks();
+      for (Task task : uiTasks) {
+        mainWindow.getTaskManager().addTask(task);
+      }
+
+      System.out.println("Synced " + uiTasks.size() + " tasks from UI to TaskManager");
+
+    } catch (Exception e) {
+      System.err.println("Error syncing UI to TaskManager: " + e.getMessage());
+      e.printStackTrace();
+    }
+  }
+
+  /**
+   * Validate dữ liệu task input
+   */
+  public boolean validateTaskData(String taskName, String dueDate) {
+    if (taskName == null || taskName.trim().isEmpty()) {
+      JOptionPane.showMessageDialog(mainWindow,
+          "Task name cannot be empty.",
+          "Validation Error", JOptionPane.ERROR_MESSAGE);
+      return false;
+    }
+
+    if (dueDate != null && !dueDate.trim().isEmpty()) {
+      try {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+        dateFormat.setLenient(false);
+        dateFormat.parse(dueDate);
+      } catch (Exception e) {
+        JOptionPane.showMessageDialog(mainWindow,
+            "Due date must be in YYYY-MM-DD format.",
+            "Validation Error", JOptionPane.ERROR_MESSAGE);
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  // ==================== DIALOG METHODS ====================
+
+  /**
+   * Hiển thị dialog tiến độ với thông báo động lực
    */
   public void showProgressDialog() {
     int total = tableModel.getRowCount();
@@ -419,7 +552,6 @@ public class TaskController {
 
     double percentage = total > 0 ? (completed * 100.0 / total) : 0;
 
-    // Hiển thị thông báo động lực dựa trên tiến độ
     String message;
     if (percentage == 100) {
       message = "Congratulations! You've completed all your tasks! 🎉";
@@ -449,45 +581,13 @@ public class TaskController {
     dialog.setVisible(true);
   }
 
-  /**
-   * Lấy LinkedHashSet các task được ghim
-   */
+  // ==================== GETTERS ====================
+
   public LinkedHashSet<Integer> getPinnedTaskRows() {
     return pinnedTaskRows;
   }
 
-  /**
-   * Kiểm tra task nào đang được ghim
-   */
   public boolean isTaskPinned(int modelRow) {
     return pinnedTaskRows.contains(modelRow);
-  }
-
-  /**
-   * Thực hiện validate dữ liệu nhập vào
-   */
-  public boolean validateTaskData(String taskName, String dueDate) {
-    if (taskName == null || taskName.trim().isEmpty()) {
-      JOptionPane.showMessageDialog(mainWindow,
-          "Task name cannot be empty.",
-          "Validation Error", JOptionPane.ERROR_MESSAGE);
-      return false;
-    }
-
-    if (dueDate != null && !dueDate.trim().isEmpty()) {
-      // Check date format
-      try {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-        dateFormat.setLenient(false);
-        dateFormat.parse(dueDate);
-      } catch (Exception e) {
-        JOptionPane.showMessageDialog(mainWindow,
-            "Due date must be in YYYY-MM-DD format.",
-            "Validation Error", JOptionPane.ERROR_MESSAGE);
-        return false;
-      }
-    }
-
-    return true;
   }
 }

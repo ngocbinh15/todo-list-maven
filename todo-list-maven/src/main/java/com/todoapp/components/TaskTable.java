@@ -26,180 +26,254 @@ import javax.swing.table.TableColumnModel;
 import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
 
+/**
+ * Custom JTable for task management with enhanced features
+ * Supports pinning, color coding, hover effects and keyboard shortcuts
+ */
 public class TaskTable extends JTable {
+
+    // ==================== COMPONENTS ====================
     private DefaultTableModel tableModel;
     private int hoveredRow = -1;
     private LinkedHashSet<Integer> pinnedTaskRows;
-    
+
+    // ==================== INITIALIZATION ====================
+
     public TaskTable() {
-        // Khởi tạo model
+        initializeTableModel();
+        setupTableProperties();
+        setupCellRenderers();
+        initializePinnedTasks();
+    }
+
+    /**
+     * Initialize read-only table model với custom behavior
+     */
+    private void initializeTableModel() {
         tableModel = new DefaultTableModel() {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return false; // Đảm bảo bảng chỉ đọc
+                return false; // Read-only table
             }
-            
+
             @Override
             public Class<?> getColumnClass(int columnIndex) {
-                return String.class; // Tất cả các cột là String
+                return String.class; // All columns are String type
             }
         };
-        
-        // Thêm các cột cho bảng
+
+        // Add table columns
         tableModel.addColumn("Task");
         tableModel.addColumn("Due Date");
         tableModel.addColumn("Priority");
         tableModel.addColumn("Status");
-        
+
         setModel(tableModel);
-        
-        // Thiết lập thuộc tính hiển thị
-        setupTableProperties();
-        
-        // Thêm các cell renderer
-        setupCellRenderers();
-        
-        // Tạo LinkedHashSet để lưu trạng thái pin
+    }
+
+    private void initializePinnedTasks() {
         pinnedTaskRows = new LinkedHashSet<>();
     }
-    
+
+    // ==================== TABLE CONFIGURATION ====================
+
+    /**
+     * Configure visual properties and layout
+     */
     private void setupTableProperties() {
-        // Thiết lập thuộc tính UI cho bảng
+        // Table appearance
         setRowHeight(30);
         setShowGrid(true);
         setGridColor(new Color(230, 230, 230));
         setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         setFillsViewportHeight(true);
         setIntercellSpacing(new Dimension(5, 5));
-        
-        // Thiết lập thuộc tính UI cho header
+
+        configureTableHeader();
+        configureColumnWidths();
+    }
+
+    /**
+     * Configure table header appearance
+     */
+    private void configureTableHeader() {
         JTableHeader header = getTableHeader();
         header.setFont(new Font("SansSerif", Font.BOLD, 12));
         header.setBackground(new Color(240, 240, 240));
-        header.setReorderingAllowed(false); // Không cho phép kéo thả cột
-        
-        // Thiết lập độ rộng cột
+        header.setReorderingAllowed(false); // Prevent column reordering
+    }
+
+    /**
+     * Set preferred column widths
+     */
+    private void configureColumnWidths() {
         TableColumnModel columnModel = getColumnModel();
         columnModel.getColumn(0).setPreferredWidth(300); // Task
         columnModel.getColumn(1).setPreferredWidth(100); // Due Date
-        columnModel.getColumn(2).setPreferredWidth(80);  // Priority
+        columnModel.getColumn(2).setPreferredWidth(80); // Priority
         columnModel.getColumn(3).setPreferredWidth(100); // Status
     }
-    
+
+    // ==================== CELL RENDERERS ====================
+
+    /**
+     * Setup custom cell renderers với color coding
+     */
     private void setupCellRenderers() {
-        // Renderer mặc định cho tất cả các cột
-        DefaultTableCellRenderer defaultRenderer = new DefaultTableCellRenderer() {
-            @Override
-            public Component getTableCellRendererComponent(JTable table, Object value,
-                    boolean isSelected, boolean hasFocus, int row, int column) {
-                
-                Component component = super.getTableCellRendererComponent(table, value, 
-                        isSelected, hasFocus, row, column);
-                
-                // Thiết lập màu nền dựa trên trạng thái select hoặc hover
-                if (isSelected) {
-                    component.setBackground(new Color(173, 216, 230)); // Light blue for selection
-                    component.setForeground(Color.BLACK);
-                } else if (row == hoveredRow) {
-                    component.setBackground(new Color(240, 248, 255)); // Lightest blue for hover
-                    component.setForeground(Color.BLACK);
-                } else {
-                    // Màu mặc định cho background
-                    component.setBackground(row % 2 == 0 ? 
-                                 new Color(250, 250, 250) : Color.WHITE);
-                    component.setForeground(Color.BLACK);
-                    
-                    // Tô màu đặc biệt cho các cột Priority và Status
-                    if (column == 2) { // Priority column
-                        String priority = value != null ? value.toString() : "";
-                        switch (priority) {
-                            case "High":
-                                component.setBackground(new Color(255, 200, 200)); // Light red
-                                break;
-                            case "Medium":
-                                component.setBackground(new Color(255, 235, 200)); // Light orange
-                                break;
-                            case "Low":
-                                component.setBackground(new Color(220, 255, 220)); // Light green
-                                break;
-                        }
-                    } else if (column == 3) { // Status column
-                        String status = value != null ? value.toString() : "";
-                        switch (status) {
-                            case "Completed":
-                                component.setBackground(new Color(200, 230, 255)); // Sky blue
-                                break;
-                            case "In Progress":
-                                component.setBackground(new Color(230, 220, 255)); // Light purple
-                                break;
-                            case "Pending":
-                                component.setBackground(new Color(240, 240, 240)); // Light gray
-                                break;
-                        }
-                    }
-                }
-                
-                // Căn giữa text cho các cột Priority và Status
-                if (column == 2 || column == 3) {
-                    ((JLabel) component).setHorizontalAlignment(SwingConstants.CENTER);
-                } else {
-                    ((JLabel) component).setHorizontalAlignment(SwingConstants.LEFT);
-                }
-                
-                // Thiết lập font cho cột
-                component.setFont(new Font("SansSerif", Font.PLAIN, 12));
-                
-                // Thêm padding
-                setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 5));
-                
-                return component;
-            }
-        };
-        
-        // Đặt renderer mặc định cho tất cả các cột
+        DefaultTableCellRenderer defaultRenderer = createDefaultRenderer();
+
+        // Apply default renderer to all columns
         for (int i = 0; i < getColumnCount(); i++) {
             getColumnModel().getColumn(i).setCellRenderer(defaultRenderer);
         }
-        
-        // Renderer đặc biệt cho cột Task để hiển thị icon pin
+
+        // Special renderer for Task column (with pin icons)
+        setupTaskColumnRenderer(defaultRenderer);
+    }
+
+    /**
+     * Create default cell renderer với hover và selection effects
+     */
+    private DefaultTableCellRenderer createDefaultRenderer() {
+        return new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+
+                Component component = super.getTableCellRendererComponent(table, value,
+                        isSelected, hasFocus, row, column);
+
+                applyRowStateColors(component, isSelected, row);
+                applyColumnColors(component, value, column, isSelected, row);
+                configureAlignment(component, column);
+                configureFont(component);
+
+                setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 5));
+
+                return component;
+            }
+        };
+    }
+
+    /**
+     * Apply colors based on row state (selected/hover/normal)
+     */
+    private void applyRowStateColors(Component component, boolean isSelected, int row) {
+        if (isSelected) {
+            component.setBackground(new Color(173, 216, 230)); // Light blue for selection
+            component.setForeground(Color.BLACK);
+        } else if (row == hoveredRow) {
+            component.setBackground(new Color(240, 248, 255)); // Lightest blue for hover
+            component.setForeground(Color.BLACK);
+        } else {
+            // Alternating row colors
+            component.setBackground(row % 2 == 0 ? new Color(250, 250, 250) : Color.WHITE);
+            component.setForeground(Color.BLACK);
+        }
+    }
+
+    /**
+     * Apply special colors for Priority and Status columns
+     */
+    private void applyColumnColors(Component component, Object value, int column,
+            boolean isSelected, int row) {
+        // Skip color coding if row is selected or hovered
+        if (isSelected || row == hoveredRow)
+            return;
+
+        if (column == 2 && value != null) { // Priority column
+            switch (value.toString()) {
+                case "High":
+                    component.setBackground(new Color(255, 200, 200)); // Light red
+                    break;
+                case "Medium":
+                    component.setBackground(new Color(255, 235, 200)); // Light orange
+                    break;
+                case "Low":
+                    component.setBackground(new Color(220, 255, 220)); // Light green
+                    break;
+            }
+        } else if (column == 3 && value != null) { // Status column
+            switch (value.toString()) {
+                case "Completed":
+                    component.setBackground(new Color(200, 230, 255)); // Sky blue
+                    break;
+                case "In Progress":
+                    component.setBackground(new Color(230, 220, 255)); // Light purple
+                    break;
+                case "Pending":
+                    component.setBackground(new Color(240, 240, 240)); // Light gray
+                    break;
+            }
+        }
+    }
+
+    /**
+     * Configure text alignment for different columns
+     */
+    private void configureAlignment(Component component, int column) {
+        if (column == 2 || column == 3) { // Priority and Status columns
+            ((JLabel) component).setHorizontalAlignment(SwingConstants.CENTER);
+        } else {
+            ((JLabel) component).setHorizontalAlignment(SwingConstants.LEFT);
+        }
+    }
+
+    private void configureFont(Component component) {
+        component.setFont(new Font("SansSerif", Font.PLAIN, 12));
+    }
+
+    /**
+     * Setup special renderer for Task column với pin icons
+     */
+    private void setupTaskColumnRenderer(DefaultTableCellRenderer defaultRenderer) {
         getColumnModel().getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value,
                     boolean isSelected, boolean hasFocus, int row, int column) {
-                
+
                 JLabel label = (JLabel) defaultRenderer.getTableCellRendererComponent(
                         table, value, isSelected, hasFocus, row, column);
-                
-                // Hiển thị icon pin cho những task được ghim
+
+                // Show pin icon for pinned tasks
                 int modelRow = table.convertRowIndexToModel(row);
                 if (pinnedTaskRows.contains(modelRow)) {
                     label.setIcon(UIManager.getIcon("FileView.floppyDriveIcon"));
-                    label.setText("📌 " + value); // Thêm emoji pin
-                    label.setIconTextGap(5); // Khoảng cách giữa icon và text
+                    label.setText("📌 " + value);
+                    label.setIconTextGap(5);
                 } else {
                     label.setIcon(null);
                 }
-                
+
                 return label;
             }
         });
     }
-    
-    // Thêm các listeners cho bảng
+
+    // ==================== EVENT HANDLERS ====================
+
+    /**
+     * Add mouse và keyboard listeners
+     */
     public void addTableMouseListeners() {
-        // Mouse click listener cho việc lựa chọn hàng và hiển thị menu ngữ cảnh
-        addMouseListener(new MouseAdapter() {
+        addMouseListener(createMouseClickListener());
+        addMouseMotionListener(createMouseMotionListener());
+        addKeyListener(createKeyboardListener());
+    }
+
+    /**
+     * Create mouse click listener cho selection và context menu
+     */
+    private MouseAdapter createMouseClickListener() {
+        return new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 int row = rowAtPoint(e.getPoint());
-                
-                // Right-click cho context menu
+
                 if (SwingUtilities.isRightMouseButton(e) && row >= 0) {
                     setRowSelectionInterval(row, row);
-                    // Context menu được xử lý ở MainWindow
-                }
-                // Left-click để chọn/bỏ chọn hàng
-                else if (row >= 0) {
+                    // Context menu handled in MainWindow
+                } else if (row >= 0) {
                     if (isRowSelected(row)) {
                         clearSelection();
                     } else {
@@ -207,81 +281,78 @@ public class TaskTable extends JTable {
                     }
                 }
             }
-            
+
             @Override
             public void mouseExited(MouseEvent e) {
-                // Reset hover state khi di chuyển chuột ra khỏi bảng
                 hoveredRow = -1;
                 repaint();
             }
-        });
-        
-        // Mouse motion listener cho hover effect
-        addMouseMotionListener(new MouseMotionAdapter() {
+        };
+    }
+
+    /**
+     * Create mouse motion listener cho hover effects
+     */
+    private MouseMotionAdapter createMouseMotionListener() {
+        return new MouseMotionAdapter() {
             @Override
             public void mouseMoved(MouseEvent e) {
                 int row = rowAtPoint(e.getPoint());
-                
+
                 if (row != hoveredRow) {
                     hoveredRow = row;
-                    repaint(); // Vẽ lại với trạng thái hover mới
+                    repaint();
                 }
             }
-        });
-        
-        // Bắt keyboard shortcuts
-        addKeyListener(new KeyAdapter() {
+        };
+    }
+
+    /**
+     * Create keyboard listener cho shortcuts
+     */
+    private KeyAdapter createKeyboardListener() {
+        return new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
                 int selectedRow = getSelectedRow();
-                
+
                 switch (e.getKeyCode()) {
                     case KeyEvent.VK_DELETE:
-                        // Delete key để xóa task
                         if (selectedRow >= 0) {
-                            // Gửi thông báo xóa task
                             firePropertyChange("deleteTask", -1, selectedRow);
                         }
                         break;
                     case KeyEvent.VK_ENTER:
-                        // Enter key để sửa task
                         if (selectedRow >= 0) {
-                            // Gửi thông báo sửa task
                             firePropertyChange("editTask", -1, selectedRow);
                         }
                         break;
                     case KeyEvent.VK_P:
-                        // P key để pin/unpin task
                         if (selectedRow >= 0 && (e.isControlDown() || e.isMetaDown())) {
                             int modelRow = convertRowIndexToModel(selectedRow);
-                            // Gửi thông báo toggle pin
                             firePropertyChange("togglePin", -1, modelRow);
                         }
                         break;
                 }
             }
-        });
+        };
     }
-    
-    // Quản lý các task được ghim
+
+    // ==================== PIN MANAGEMENT ====================
+
+    /**
+     * Update pinned tasks display
+     */
     public void updatePinnedTasks(LinkedHashSet<Integer> pinnedRows) {
         this.pinnedTaskRows = pinnedRows;
-        repaint(); // Vẽ lại để cập nhật icon pin
+        repaint();
     }
-    
-    public DefaultTableModel getTableModel() {
-        return tableModel;
-    }
-    
-    public int getHoveredRow() {
-        return hoveredRow;
-    }
-    
-    public void setHoveredRow(int row) {
-        this.hoveredRow = row;
-    }
-    
-    // Hàm tiện ích để lấy task được chọn
+
+    // ==================== UTILITY METHODS ====================
+
+    /**
+     * Get currently selected task name
+     */
     public String getSelectedTask() {
         int selectedRow = getSelectedRow();
         if (selectedRow >= 0) {
@@ -290,8 +361,10 @@ public class TaskTable extends JTable {
         }
         return null;
     }
-    
-    // Hàm tiện ích để lọc tasks theo tiêu chí
+
+    /**
+     * Filter tasks based on search text
+     */
     public void filterTasks(String text) {
         TableRowSorter<TableModel> sorter = (TableRowSorter<TableModel>) getRowSorter();
         if (text == null || text.isEmpty()) {
@@ -299,5 +372,19 @@ public class TaskTable extends JTable {
         } else {
             sorter.setRowFilter(RowFilter.regexFilter("(?i)" + text));
         }
+    }
+
+    // ==================== GETTERS ====================
+
+    public DefaultTableModel getTableModel() {
+        return tableModel;
+    }
+
+    public int getHoveredRow() {
+        return hoveredRow;
+    }
+
+    public void setHoveredRow(int row) {
+        this.hoveredRow = row;
     }
 }

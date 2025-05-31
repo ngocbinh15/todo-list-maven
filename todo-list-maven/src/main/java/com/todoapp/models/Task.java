@@ -13,7 +13,7 @@ public class Task implements Serializable, Comparable<Task> {
   private static final long serialVersionUID = 1L;
 
   private String name;
-  private String dueDate;
+  private Date dueDate;
   private String priority;
   private String status;
   private boolean pinned;
@@ -21,7 +21,7 @@ public class Task implements Serializable, Comparable<Task> {
   /**
    * Constructor to create a new task with all properties
    */
-  public Task(String name, String dueDate, String priority, String status, boolean pinned) {
+  public Task(String name, Date dueDate, String priority, String status, boolean pinned) {
     this.name = name;
     this.dueDate = dueDate;
     this.priority = priority;
@@ -32,8 +32,13 @@ public class Task implements Serializable, Comparable<Task> {
   /**
    * Simplified constructor with defaults
    */
-  public Task(String name, String dueDate) {
+  public Task(String name, Date dueDate) {
     this(name, dueDate, "Medium", "Pending", false);
+  }
+
+  // Thêm constructor này
+  public Task(String name) {
+    this(name, null, "Medium", "Pending", false);
   }
 
   // Getters and setters
@@ -46,11 +51,11 @@ public class Task implements Serializable, Comparable<Task> {
     this.name = name;
   }
 
-  public String getDueDate() {
+  public Date getDueDate() {
     return dueDate;
   }
 
-  public void setDueDate(String dueDate) {
+  public void setDueDate(Date dueDate) {
     this.dueDate = dueDate;
   }
 
@@ -89,7 +94,7 @@ public class Task implements Serializable, Comparable<Task> {
    * Check if task is overdue based on current date
    */
   public boolean isOverdue() {
-    if (dueDate == null || dueDate.trim().isEmpty()) {
+    if (dueDate == null) {
       return false;
     }
 
@@ -97,20 +102,19 @@ public class Task implements Serializable, Comparable<Task> {
       return false;
     }
 
+    Date today = new Date();
+
+    // Reset time part for today to compare dates only
+    SimpleDateFormat dateOnlyFormat = new SimpleDateFormat("yyyy-MM-dd");
+    String todayStr = dateOnlyFormat.format(today);
+    Date todayDateOnly;
     try {
-      SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-      Date taskDate = dateFormat.parse(dueDate);
-      Date today = new Date();
-
-      // Reset time part for today to compare dates only
-      SimpleDateFormat dateOnlyFormat = new SimpleDateFormat("yyyy-MM-dd");
-      String todayStr = dateOnlyFormat.format(today);
-      Date todayDateOnly = dateFormat.parse(todayStr);
-
-      return taskDate.before(todayDateOnly);
+      todayDateOnly = dateOnlyFormat.parse(todayStr);
     } catch (ParseException e) {
       return false;
     }
+
+    return dueDate.before(todayDateOnly);
   }
 
   /**
@@ -164,14 +168,7 @@ public class Task implements Serializable, Comparable<Task> {
 
     // Then sort by due date
     if (this.dueDate != null && other.dueDate != null) {
-      try {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-        Date thisDate = dateFormat.parse(this.dueDate);
-        Date otherDate = dateFormat.parse(other.dueDate);
-        return thisDate.compareTo(otherDate);
-      } catch (ParseException e) {
-        return this.dueDate.compareTo(other.dueDate);
-      }
+      return this.dueDate.compareTo(other.dueDate);
     } else if (this.dueDate == null && other.dueDate != null) {
       return 1;
     } else if (this.dueDate != null && other.dueDate == null) {
@@ -184,6 +181,8 @@ public class Task implements Serializable, Comparable<Task> {
 
   @Override
   public String toString() {
-    return name + " (Due: " + dueDate + ", Priority: " + priority + ", Status: " + status + ")";
+    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+    String dueDateStr = (dueDate != null) ? dateFormat.format(dueDate) : "No due date";
+    return name + " (Due: " + dueDateStr + ", Priority: " + priority + ", Status: " + status + ")";
   }
 }

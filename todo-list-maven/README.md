@@ -43,7 +43,7 @@ mvn clean package
 #### Chạy file JAR
 
 ```bash
-java -jar target/todo-list-app-1.0.0-jar-with-dependencies.jar
+java -jar target/todo-list-app-v1.0.1-jar-with-dependencies.jar
 ```
 
 ### 3. Chạy ứng dụng

@@ -1,9 +1,11 @@
 F:\Soure_Code\BestOfTodoList\todo-list-maven\src\main\java\com\todoapp\views\TaskDialog.java
 F:\Soure_Code\BestOfTodoList\todo-list-maven\src\main\java\com\todoapp\components\TaskTable.java
 F:\Soure_Code\BestOfTodoList\todo-list-maven\src\main\java\com\todoapp\controllers\TaskController.java
+F:\Soure_Code\BestOfTodoList\todo-list-maven\src\main\java\com\todoapp\utils\TaskStorage.java
 F:\Soure_Code\BestOfTodoList\todo-list-maven\src\main\java\com\todoapp\ToDoListApp.java
 F:\Soure_Code\BestOfTodoList\todo-list-maven\src\main\java\com\todoapp\views\DatePickerDialog.java
 F:\Soure_Code\BestOfTodoList\todo-list-maven\src\main\java\com\todoapp\utils\TaskManager.java
+F:\Soure_Code\BestOfTodoList\todo-list-maven\src\main\java\com\todoapp\utils\UserPreferences.java
 F:\Soure_Code\BestOfTodoList\todo-list-maven\src\main\java\com\todoapp\views\MainWindow.java
 F:\Soure_Code\BestOfTodoList\todo-list-maven\src\main\java\com\todoapp\utils\PinnedRowSorter.java
 F:\Soure_Code\BestOfTodoList\todo-list-maven\src\main\java\com\todoapp\models\Task.java

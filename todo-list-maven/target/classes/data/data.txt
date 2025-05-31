@@ -1,0 +1,17 @@
+# Todo List Export
+# Format: Task Name|Due Date|Priority|Status
+# Generated on: 2025-05-28 14:29:04
+
+Complete Java assignment|2025-05-28|High|Pending
+Buy groceries|2025-05-26|Medium|Pending
+Schedule dentist appointment|2025-06-15|Low|Pending
+Complete project documentation|2025-06-02|High|Completed
+Plan summer vacation|2025-07-15|Medium|In Progress
+Urgent client meeting|2025-05-28|High|In Progress
+Review code changes|2025-06-03|Medium|Pending
+Team lunch|2025-05-28|Low|Pending
+
+# Export Summary:
+# Total tasks exported: 8
+# Completed: 1, In Progress: 2, Pending: 5
+# Completion rate: 12.5%

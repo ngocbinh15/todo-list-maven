@@ -7,7 +7,7 @@
 
     <groupId>com.todoapp</groupId>
     <artifactId>todo-list-app</artifactId>
-    <version>1.0.0</version>
+    <version>1</version>
     <packaging>jar</packaging>
 
     <name>To-Do List Application</name>
@@ -25,9 +25,12 @@
     </dependencies>
 
     <build>
+        <finalName>todo-list-app-v1.0.1</finalName>
+        
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
+                <filtering>false</filtering>
             </resource>
         </resources>
         <plugins>
@@ -35,10 +38,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version>
+                <version>3.11.0</version>
                 <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
+                    <source>11</source>
+                    <target>11</target>
                 </configuration>
             </plugin>
 
@@ -46,7 +49,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>3.2.0</version>
+                <version>3.3.0</version>
                 <configuration>
                     <archive>
                         <manifest>

@@ -8,7 +8,6 @@ import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.GridLayout;
 import java.awt.Insets;
-import java.awt.event.ActionEvent;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -18,7 +17,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
@@ -36,26 +34,46 @@ import javax.swing.border.CompoundBorder;
 import javax.swing.border.TitledBorder;
 import javax.swing.table.DefaultTableModel;
 
+/**
+ * Calendar dialog hiển thị tasks theo ngày
+ * Cung cấp giao diện calendar với task indicators và task details
+ */
 public class DatePickerDialog extends JDialog {
+  // ==================== CONSTANTS ====================
+  private static final Color BACKGROUND_COLOR = new Color(245, 245, 250);
+  private static final Color CALENDAR_BG = new Color(250, 250, 255);
+  private static final Color TODAY_COLOR = new Color(230, 230, 250);
+  private static final Color BORDER_COLOR = new Color(200, 200, 220);
+
+  private static final Color HIGH_PRIORITY_COLOR = new Color(255, 80, 80);
+  private static final Color INCOMPLETE_COLOR = new Color(255, 180, 0);
+  private static final Color COMPLETED_COLOR = new Color(100, 180, 100);
+
+  private static final String[] WEEKDAYS = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+  private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
+
+  // ==================== COMPONENTS ====================
   private JPanel calendarPanel;
   private JLabel monthYearLabel;
-  private Calendar calendar;
-  private SimpleDateFormat dateFormat;
+  private JLabel selectedDateLabel;
   private JButton prevButton, nextButton;
-  private DefaultTableModel tableModel;
-  private Map<String, List<TaskInfo>> dateTaskMap;
   private JList<String> taskList;
   private DefaultListModel<String> taskListModel;
-  private JLabel selectedDateLabel;
-  private ArrayList<JButton> dayButtons;
 
-  // Class to store task information
-  private class TaskInfo {
-    String name;
-    String priority;
-    String status;
+  // ==================== DATA ====================
+  private final Calendar calendar;
+  private final DefaultTableModel tableModel;
+  private final Map<String, List<TaskInfo>> dateTaskMap;
 
-    public TaskInfo(String name, String priority, String status) {
+  /**
+   * Task information container
+   */
+  private static class TaskInfo {
+    final String name;
+    final String priority;
+    final String status;
+
+    TaskInfo(String name, String priority, String status) {
       this.name = name;
       this.priority = priority;
       this.status = status;
@@ -65,84 +83,168 @@ public class DatePickerDialog extends JDialog {
   public DatePickerDialog(JFrame parent, DefaultTableModel tableModel) {
     super(parent, "Calendar View", true);
     this.tableModel = tableModel;
+    this.calendar = Calendar.getInstance();
+    this.dateTaskMap = new HashMap<>();
 
-    // Initialize date and calendar objects
-    calendar = Calendar.getInstance();
-    dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-    dateTaskMap = new HashMap<>();
+    initializeDialog();
+    buildUI();
+    setupEventHandlers();
+    loadTaskData();
+    updateCalendar();
+  }
 
-    // Set dialog properties
-    setSize(800, 600);
-    setLocationRelativeTo(parent);
+  // ==================== INITIALIZATION ====================
+
+  /**
+   * Thiết lập cơ bản cho dialog
+   */
+  private void initializeDialog() {
+    setSize(900, 650); // Tăng size để hiển thị tốt hơn
+    setLocationRelativeTo(getParent());
     setLayout(new BorderLayout(10, 10));
-    getContentPane().setBackground(new Color(245, 245, 250));
+    getContentPane().setBackground(BACKGROUND_COLOR);
+    setResizable(true); // Cho phép resize
+  }
 
-    // Create main panels
-    JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
-    mainPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+  /**
+   * Xây dựng giao diện người dùng
+   */
+  private void buildUI() {
+    JPanel mainPanel = createMainPanel();
+    JSplitPane splitPane = createSplitPane();
+    JPanel buttonPanel = createButtonPanel();
 
-    // Create calendar panel with header
-    JPanel calendarContainer = new JPanel(new BorderLayout(5, 10));
-    calendarContainer.setBorder(new CompoundBorder(
-        BorderFactory.createTitledBorder(
-            BorderFactory.createLineBorder(new Color(200, 200, 220), 1, true),
-            "Calendar",
-            TitledBorder.LEFT,
-            TitledBorder.TOP,
-            new Font("SansSerif", Font.BOLD, 14)),
-        BorderFactory.createEmptyBorder(10, 10, 10, 10)));
+    mainPanel.add(splitPane, BorderLayout.CENTER);
+    mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+    add(mainPanel);
+  }
 
-    // Create navigation panel
-    JPanel navigationPanel = new JPanel(new BorderLayout(5, 0));
-    navigationPanel.setBackground(new Color(240, 240, 245));
-    navigationPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+  /**
+   * Tạo panel chính
+   */
+  private JPanel createMainPanel() {
+    JPanel panel = new JPanel(new BorderLayout(10, 10));
+    panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+    return panel;
+  }
 
-    // Month navigation buttons
-    prevButton = new JButton("◀ Previous");
-    prevButton.setFocusPainted(false);
-    prevButton.setFont(new Font("SansSerif", Font.BOLD, 12));
+  /**
+   * Tạo split pane cho calendar và task list
+   */
+  private JSplitPane createSplitPane() {
+    JSplitPane splitPane = new JSplitPane(
+        JSplitPane.HORIZONTAL_SPLIT,
+        createCalendarPanel(),
+        createTaskPanel());
 
-    nextButton = new JButton("Next ▶");
-    nextButton.setFocusPainted(false);
-    nextButton.setFont(new Font("SansSerif", Font.BOLD, 12));
+    splitPane.setDividerLocation(550); // Tăng space cho calendar
+    splitPane.setOneTouchExpandable(true);
+    splitPane.setContinuousLayout(true);
+    splitPane.setResizeWeight(0.6); // Calendar có 60% width
 
-    // Month year label
+    return splitPane;
+  }
+
+  // ==================== CALENDAR PANEL ====================
+
+  /**
+   * Tạo panel calendar
+   */
+  private JPanel createCalendarPanel() {
+    JPanel container = new JPanel(new BorderLayout(5, 5));
+    container.setBorder(createTitledBorder("Calendar"));
+    container.setBackground(BACKGROUND_COLOR);
+
+    // Navigation panel
+    JPanel navPanel = createNavigationPanel();
+
+    // Weekday header
+    JPanel weekdayPanel = createWeekdayHeader();
+
+    // Calendar grid - SỬA ĐỔI CHÍNH TẠI ĐÂY
+    calendarPanel = new JPanel(new GridLayout(6, 7, 2, 2));
+    calendarPanel.setBackground(CALENDAR_BG);
+    calendarPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+
+    // Đặt preferred size cho calendar
+    calendarPanel.setPreferredSize(new java.awt.Dimension(420, 240));
+
+    // Combine weekday và calendar vào một panel
+    JPanel calendarContainer = new JPanel(new BorderLayout(0, 2));
+    calendarContainer.add(weekdayPanel, BorderLayout.NORTH);
+    calendarContainer.add(calendarPanel, BorderLayout.CENTER);
+
+    container.add(navPanel, BorderLayout.NORTH);
+    container.add(calendarContainer, BorderLayout.CENTER);
+
+    return container;
+  }
+
+  /**
+   * Tạo panel navigation
+   */
+  private JPanel createNavigationPanel() {
+    JPanel panel = new JPanel(new BorderLayout(5, 0));
+    panel.setBackground(new Color(240, 240, 245));
+    panel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+
+    // Navigation buttons
+    prevButton = createNavButton("◀ Previous");
+    nextButton = createNavButton("Next ▶");
+
+    // Month/Year label
     monthYearLabel = new JLabel("", SwingConstants.CENTER);
     monthYearLabel.setFont(new Font("SansSerif", Font.BOLD, 16));
     monthYearLabel.setForeground(new Color(50, 50, 120));
 
-    navigationPanel.add(prevButton, BorderLayout.WEST);
-    navigationPanel.add(monthYearLabel, BorderLayout.CENTER);
-    navigationPanel.add(nextButton, BorderLayout.EAST);
+    panel.add(prevButton, BorderLayout.WEST);
+    panel.add(monthYearLabel, BorderLayout.CENTER);
+    panel.add(nextButton, BorderLayout.EAST);
 
-    // Create weekday header
-    JPanel weekDaysPanel = new JPanel(new GridLayout(1, 7));
-    weekDaysPanel.setBackground(new Color(230, 230, 240));
+    return panel;
+  }
 
-    String[] weekdays = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
-    for (String day : weekdays) {
-      JLabel dayLabel = new JLabel(day, SwingConstants.CENTER);
-      dayLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
-      dayLabel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
-      weekDaysPanel.add(dayLabel);
+  /**
+   * Tạo nút navigation
+   */
+  private JButton createNavButton(String text) {
+    JButton button = new JButton(text);
+    button.setFocusPainted(false);
+    button.setFont(new Font("SansSerif", Font.BOLD, 12));
+    return button;
+  }
+
+  /**
+   * Tạo header weekday với size cố định
+   */
+  private JPanel createWeekdayHeader() {
+    JPanel panel = new JPanel(new GridLayout(1, 7, 2, 2));
+    panel.setBackground(new Color(230, 230, 240));
+    panel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
+    panel.setPreferredSize(new java.awt.Dimension(420, 30));
+
+    for (String day : WEEKDAYS) {
+      JLabel label = new JLabel(day, SwingConstants.CENTER);
+      label.setFont(new Font("SansSerif", Font.BOLD, 12));
+      label.setOpaque(true);
+      label.setBackground(new Color(220, 220, 235));
+      label.setBorder(BorderFactory.createLineBorder(BORDER_COLOR));
+      panel.add(label);
     }
 
-    // Create calendar grid
-    calendarPanel = new JPanel(new GridLayout(6, 7, 5, 5));
-    calendarPanel.setBackground(new Color(250, 250, 255));
+    return panel;
+  }
 
-    // Create task details panel
-    JPanel taskPanel = new JPanel(new BorderLayout(5, 10));
-    taskPanel.setBorder(new CompoundBorder(
-        BorderFactory.createTitledBorder(
-            BorderFactory.createLineBorder(new Color(200, 200, 220), 1, true),
-            "Tasks for Selected Date",
-            TitledBorder.LEFT,
-            TitledBorder.TOP,
-            new Font("SansSerif", Font.BOLD, 14)),
-        BorderFactory.createEmptyBorder(10, 10, 10, 10)));
+  // ==================== TASK PANEL ====================
 
-    // Selected date indicator
+  /**
+   * Tạo panel task details
+   */
+  private JPanel createTaskPanel() {
+    JPanel panel = new JPanel(new BorderLayout(5, 10));
+    panel.setBorder(createTitledBorder("Tasks for Selected Date"));
+
+    // Selected date label
     selectedDateLabel = new JLabel("No date selected", SwingConstants.CENTER);
     selectedDateLabel.setFont(new Font("SansSerif", Font.BOLD, 14));
     selectedDateLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
@@ -154,73 +256,97 @@ public class DatePickerDialog extends JDialog {
     taskList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     taskList.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
 
-    JScrollPane taskScrollPane = new JScrollPane(taskList);
-    taskScrollPane.setBorder(BorderFactory.createLineBorder(new Color(220, 220, 235)));
+    JScrollPane scrollPane = new JScrollPane(taskList);
+    scrollPane.setBorder(BorderFactory.createLineBorder(new Color(220, 220, 235)));
 
-    taskPanel.add(selectedDateLabel, BorderLayout.NORTH);
-    taskPanel.add(taskScrollPane, BorderLayout.CENTER);
+    panel.add(selectedDateLabel, BorderLayout.NORTH);
+    panel.add(scrollPane, BorderLayout.CENTER);
 
-    // Close button
-    JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-    buttonPanel.setBackground(new Color(245, 245, 250));
+    return panel;
+  }
 
-    JButton closeButton = new JButton("Close");
-    closeButton.setFocusPainted(false);
-    closeButton.setFont(new Font("SansSerif", Font.BOLD, 12));
+  /**
+   * Tạo panel buttons
+   */
+  private JPanel createButtonPanel() {
+    JPanel panel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+    panel.setBackground(BACKGROUND_COLOR);
+
+    JButton todayButton = createButton("Go to Today");
+    JButton closeButton = createButton("Close");
+
+    panel.add(todayButton);
+    panel.add(closeButton);
+
+    return panel;
+  }
+
+  /**
+   * Tạo button với style nhất quán
+   */
+  private JButton createButton(String text) {
+    JButton button = new JButton(text);
+    button.setFocusPainted(false);
+    button.setFont(new Font("SansSerif", Font.BOLD, 12));
+    return button;
+  }
+
+  /**
+   * Tạo titled border
+   */
+  private CompoundBorder createTitledBorder(String title) {
+    return new CompoundBorder(
+        BorderFactory.createTitledBorder(
+            BorderFactory.createLineBorder(BORDER_COLOR, 1, true),
+            title,
+            TitledBorder.LEFT,
+            TitledBorder.TOP,
+            new Font("SansSerif", Font.BOLD, 14)),
+        BorderFactory.createEmptyBorder(10, 10, 10, 10));
+  }
+
+  // ==================== EVENT HANDLERS ====================
+
+  /**
+   * Thiết lập event handlers
+   */
+  private void setupEventHandlers() {
+    prevButton.addActionListener(e -> navigateMonth(-1));
+    nextButton.addActionListener(e -> navigateMonth(1));
+
+    // Tìm button "Go to Today" và "Close" từ button panel
+    JPanel buttonPanel = (JPanel) ((JPanel) getContentPane().getComponent(0))
+        .getComponent(1); // mainPanel -> buttonPanel
+
+    JButton todayButton = (JButton) buttonPanel.getComponent(0);
+    JButton closeButton = (JButton) buttonPanel.getComponent(1);
+
+    todayButton.addActionListener(e -> goToToday());
     closeButton.addActionListener(e -> dispose());
+  }
 
-    JButton todayButton = new JButton("Go to Today");
-    todayButton.setFocusPainted(false);
-    todayButton.setFont(new Font("SansSerif", Font.BOLD, 12));
-    todayButton.addActionListener(e -> {
-      calendar.setTime(new Date());
-      updateCalendar();
-    });
-
-    buttonPanel.add(todayButton);
-    buttonPanel.add(closeButton);
-
-    // Add everything to the calendar container
-    JPanel calHeader = new JPanel(new BorderLayout());
-    calHeader.add(navigationPanel, BorderLayout.NORTH);
-    calHeader.add(weekDaysPanel, BorderLayout.SOUTH);
-
-    calendarContainer.add(calHeader, BorderLayout.NORTH);
-    calendarContainer.add(calendarPanel, BorderLayout.CENTER);
-
-    // Split pane for calendar and task list
-    JSplitPane splitPane = new JSplitPane(
-        JSplitPane.HORIZONTAL_SPLIT,
-        calendarContainer,
-        taskPanel);
-    splitPane.setDividerLocation(500);
-    splitPane.setOneTouchExpandable(true);
-    splitPane.setContinuousLayout(true);
-
-    mainPanel.add(splitPane, BorderLayout.CENTER);
-    mainPanel.add(buttonPanel, BorderLayout.SOUTH);
-
-    add(mainPanel);
-
-    // Add listeners
-    prevButton.addActionListener(e -> {
-      calendar.add(Calendar.MONTH, -1);
-      updateCalendar();
-    });
-
-    nextButton.addActionListener(e -> {
-      calendar.add(Calendar.MONTH, 1);
-      updateCalendar();
-    });
-
-    // Process tasks from the table model
-    processTableTasks();
-
-    // Initialize calendar display
+  /**
+   * Navigate tháng
+   */
+  private void navigateMonth(int direction) {
+    calendar.add(Calendar.MONTH, direction);
     updateCalendar();
   }
 
-  private void processTableTasks() {
+  /**
+   * Về ngày hôm nay
+   */
+  private void goToToday() {
+    calendar.setTime(new Date());
+    updateCalendar();
+  }
+
+  // ==================== DATA OPERATIONS ====================
+
+  /**
+   * Load task data từ table model
+   */
+  private void loadTaskData() {
     dateTaskMap.clear();
 
     for (int i = 0; i < tableModel.getRowCount(); i++) {
@@ -229,182 +355,247 @@ public class DatePickerDialog extends JDialog {
       String priority = (String) tableModel.getValueAt(i, 2);
       String status = (String) tableModel.getValueAt(i, 3);
 
-      // Check if the date is valid
-      if (dueDate != null && !dueDate.trim().isEmpty()) {
-        try {
-          // Ensure date is valid by parsing it
-          dateFormat.parse(dueDate);
-
-          // Add task to the map
-          TaskInfo taskInfo = new TaskInfo(taskName, priority, status);
-          dateTaskMap.computeIfAbsent(dueDate, k -> new ArrayList<>()).add(taskInfo);
-        } catch (ParseException e) {
-          // Skip invalid dates
-        }
+      if (isValidDate(dueDate)) {
+        TaskInfo task = new TaskInfo(taskName, priority, status);
+        dateTaskMap.computeIfAbsent(dueDate, k -> new ArrayList<>()).add(task);
       }
     }
   }
 
+  /**
+   * Kiểm tra date hợp lệ
+   */
+  private boolean isValidDate(String dateString) {
+    if (dateString == null || dateString.trim().isEmpty()) {
+      return false;
+    }
+
+    try {
+      DATE_FORMAT.parse(dateString);
+      return true;
+    } catch (ParseException e) {
+      return false;
+    }
+  }
+
+  // ==================== CALENDAR UPDATE ====================
+
+  /**
+   * Cập nhật calendar display
+   */
   private void updateCalendar() {
     calendarPanel.removeAll();
-    dayButtons = new ArrayList<>();
 
-    // Update month/year label
-    SimpleDateFormat monthYearFormat = new SimpleDateFormat("MMMM yyyy");
-    monthYearLabel.setText(monthYearFormat.format(calendar.getTime()));
-
-    // Get current month's first day and number of days
-    Calendar tempCalendar = (Calendar) calendar.clone();
-    tempCalendar.set(Calendar.DAY_OF_MONTH, 1);
-    int firstDayOfMonth = tempCalendar.get(Calendar.DAY_OF_WEEK) - 1;
-    int daysInMonth = tempCalendar.getActualMaximum(Calendar.DAY_OF_MONTH);
-
-    // Get current date for highlighting today
-    Calendar todayCal = Calendar.getInstance();
-    boolean sameMonthYear = todayCal.get(Calendar.YEAR) == tempCalendar.get(Calendar.YEAR) &&
-        todayCal.get(Calendar.MONTH) == tempCalendar.get(Calendar.MONTH);
-    int today = sameMonthYear ? todayCal.get(Calendar.DAY_OF_MONTH) : -1;
-
-    // Add empty spaces for days before the 1st of the month
-    for (int i = 0; i < firstDayOfMonth; i++) {
-      JPanel emptyPanel = new JPanel();
-      emptyPanel.setBackground(new Color(250, 250, 255));
-      calendarPanel.add(emptyPanel);
-    }
-
-    // Add day buttons
-    for (int day = 1; day <= daysInMonth; day++) {
-      final int currentDay = day;
-
-      // Create button for day
-      JButton dayButton = new JButton(String.valueOf(day));
-      dayButton.setMargin(new Insets(2, 2, 2, 2));
-      dayButton.setFocusPainted(false);
-
-      // Style the button
-      if (day == today) {
-        // Highlight today
-        dayButton.setBackground(new Color(230, 230, 250));
-        dayButton.setBorder(BorderFactory.createLineBorder(new Color(100, 100, 220), 2));
-        dayButton.setFont(new Font("SansSerif", Font.BOLD, 12));
-      } else {
-        dayButton.setBackground(new Color(250, 250, 255));
-        dayButton.setBorder(BorderFactory.createLineBorder(new Color(220, 220, 235)));
-        dayButton.setFont(new Font("SansSerif", Font.PLAIN, 12));
-      }
-
-      // Check if date has tasks
-      tempCalendar.set(Calendar.DAY_OF_MONTH, day);
-      String dateString = dateFormat.format(tempCalendar.getTime());
-
-      List<TaskInfo> tasksForDay = dateTaskMap.get(dateString);
-      if (tasksForDay != null && !tasksForDay.isEmpty()) {
-        // Highlight days with tasks
-        dayButton.setForeground(new Color(50, 50, 180));
-
-        // Add indicator for tasks
-        int taskCount = tasksForDay.size();
-        String taskCountStr = taskCount > 0 ? " (" + taskCount + ")" : "";
-
-        // Add colored dot or badge based on task priority
-        boolean hasHighPriority = false;
-        boolean hasUncompletedTask = false;
-
-        for (TaskInfo task : tasksForDay) {
-          if ("High".equals(task.priority)) {
-            hasHighPriority = true;
-          }
-          if (!"Completed".equals(task.status)) {
-            hasUncompletedTask = true;
-          }
-        }
-
-        // Lưu giá trị final cho anonymous class
-        final boolean finalHasHighPriority = hasHighPriority;
-        final boolean finalHasUncompletedTask = hasUncompletedTask;
-
-        // Create a custom button with colored indicator
-        dayButton = new JButton(new AbstractAction(String.valueOf(day)) {
-          @Override
-          public void actionPerformed(ActionEvent e) {
-            showTasksForDate(dateString);
-          }
-        }) {
-          @Override
-          protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-
-            // Paint task indicator dot
-            int dotSize = 8;
-            int x = getWidth() - dotSize - 3;
-            int y = 3;
-
-            Color dotColor = finalHasHighPriority ? new Color(255, 80, 80) : // Red for high priority
-                finalHasUncompletedTask ? new Color(255, 180, 0) : // Orange for incomplete
-                    new Color(100, 180, 100); // Green for all completed
-
-            g.setColor(dotColor);
-            g.fillOval(x, y, dotSize, dotSize);
-          }
-        };
-
-        // Restore styling
-        if (day == today) {
-          dayButton.setBackground(new Color(230, 230, 250));
-          dayButton.setBorder(BorderFactory.createLineBorder(new Color(100, 100, 220), 2));
-          dayButton.setFont(new Font("SansSerif", Font.BOLD, 12));
-        } else {
-          dayButton.setBackground(new Color(250, 250, 255));
-          dayButton.setBorder(BorderFactory.createLineBorder(new Color(220, 220, 235)));
-          dayButton.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        }
-
-        // Make font bold for days with tasks
-        dayButton.setFont(new Font(dayButton.getFont().getName(), Font.BOLD, dayButton.getFont().getSize()));
-      }
-
-      // Add action to show tasks for this day
-      final Calendar calendarRef = calendar; // Tạo bản sao final
-      dayButton.addActionListener(e -> {
-        Calendar selectedCal = (Calendar) calendarRef.clone();
-        selectedCal.set(Calendar.DAY_OF_MONTH, currentDay);
-        showTasksForDate(dateString);
-      });
-
-      calendarPanel.add(dayButton);
-      dayButtons.add(dayButton);
-    }
-
-    // Add empty spaces for days after the end of the month
-    int totalCells = 42; // 6 rows * 7 days
-    int remainingCells = totalCells - (firstDayOfMonth + daysInMonth);
-    for (int i = 0; i < remainingCells; i++) {
-      JPanel emptyPanel = new JPanel();
-      emptyPanel.setBackground(new Color(250, 250, 255));
-      calendarPanel.add(emptyPanel);
-    }
+    updateMonthYearLabel();
+    addEmptyStartCells();
+    addDayButtons();
+    addEmptyEndCells();
 
     calendarPanel.revalidate();
     calendarPanel.repaint();
   }
 
+  /**
+   * Cập nhật label tháng/năm
+   */
+  private void updateMonthYearLabel() {
+    SimpleDateFormat formatter = new SimpleDateFormat("MMMM yyyy");
+    monthYearLabel.setText(formatter.format(calendar.getTime()));
+  }
+
+  /**
+   * Thêm các ô trống đầu tháng
+   */
+  private void addEmptyStartCells() {
+    Calendar temp = (Calendar) calendar.clone();
+    temp.set(Calendar.DAY_OF_MONTH, 1);
+    int firstDay = temp.get(Calendar.DAY_OF_WEEK) - 1;
+
+    for (int i = 0; i < firstDay; i++) {
+      calendarPanel.add(createEmptyCell());
+    }
+  }
+
+  /**
+   * Thêm các nút ngày
+   */
+  private void addDayButtons() {
+    Calendar temp = (Calendar) calendar.clone();
+    temp.set(Calendar.DAY_OF_MONTH, 1);
+    int daysInMonth = temp.getActualMaximum(Calendar.DAY_OF_MONTH);
+    int today = getTodayIfSameMonth();
+
+    for (int day = 1; day <= daysInMonth; day++) {
+      JButton dayButton = createDayButton(day, day == today, temp);
+      calendarPanel.add(dayButton);
+    }
+  }
+
+  /**
+   * Lấy ngày hôm nay nếu cùng tháng/năm
+   */
+  private int getTodayIfSameMonth() {
+    Calendar today = Calendar.getInstance();
+    boolean sameMonth = today.get(Calendar.YEAR) == calendar.get(Calendar.YEAR) &&
+        today.get(Calendar.MONTH) == calendar.get(Calendar.MONTH);
+    return sameMonth ? today.get(Calendar.DAY_OF_MONTH) : -1;
+  }
+
+  /**
+   * Tạo button cho ngày với size cố định
+   */
+  private JButton createDayButton(int day, boolean isToday, Calendar temp) {
+    temp.set(Calendar.DAY_OF_MONTH, day);
+    String dateString = DATE_FORMAT.format(temp.getTime());
+    List<TaskInfo> tasks = dateTaskMap.get(dateString);
+
+    JButton button;
+    if (tasks != null && !tasks.isEmpty()) {
+      button = createTaskDayButton(day, isToday, dateString, tasks);
+    } else {
+      button = createSimpleDayButton(day, isToday, dateString);
+    }
+
+    // ĐẢM BẢO TẤT CẢ BUTTONS CÓ CÙNG SIZE
+    button.setPreferredSize(new java.awt.Dimension(55, 35));
+    button.setMinimumSize(new java.awt.Dimension(55, 35));
+    button.setMaximumSize(new java.awt.Dimension(55, 35));
+
+    return button;
+  }
+
+  /**
+   * Tạo button cho ngày có tasks
+   */
+  private JButton createTaskDayButton(int day, boolean isToday, String dateString, List<TaskInfo> tasks) {
+    TaskDayButton button = new TaskDayButton(day, tasks);
+    styleDayButton(button, isToday, true);
+    button.addActionListener(e -> showTasksForDate(dateString));
+    return button;
+  }
+
+  /**
+   * Tạo button cho ngày không có tasks
+   */
+  private JButton createSimpleDayButton(int day, boolean isToday, String dateString) {
+    JButton button = new JButton(String.valueOf(day));
+    styleDayButton(button, isToday, false);
+    button.addActionListener(e -> showTasksForDate(dateString));
+    return button;
+  }
+
+  /**
+   * Style cho day button
+   */
+  private void styleDayButton(JButton button, boolean isToday, boolean hasTasks) {
+    button.setMargin(new Insets(2, 2, 2, 2));
+    button.setFocusPainted(false);
+
+    if (isToday) {
+      button.setBackground(TODAY_COLOR);
+      button.setBorder(BorderFactory.createLineBorder(new Color(100, 100, 220), 2));
+      button.setFont(new Font("SansSerif", Font.BOLD, 12));
+    } else {
+      button.setBackground(CALENDAR_BG);
+      button.setBorder(BorderFactory.createLineBorder(new Color(220, 220, 235)));
+      button.setFont(new Font("SansSerif", hasTasks ? Font.BOLD : Font.PLAIN, 12));
+    }
+
+    if (hasTasks) {
+      button.setForeground(new Color(50, 50, 180));
+    }
+  }
+
+  /**
+   * Thêm các ô trống cuối tháng
+   */
+  private void addEmptyEndCells() {
+    int totalCells = 42; // 6 rows * 7 days
+    int usedCells = calendarPanel.getComponentCount();
+    int remaining = totalCells - usedCells;
+
+    for (int i = 0; i < remaining; i++) {
+      calendarPanel.add(createEmptyCell());
+    }
+  }
+
+  /**
+   * Tạo ô trống với size cố định
+   */
+  private JPanel createEmptyCell() {
+    JPanel panel = new JPanel();
+    panel.setBackground(CALENDAR_BG);
+    panel.setPreferredSize(new java.awt.Dimension(55, 35));
+    panel.setMinimumSize(new java.awt.Dimension(55, 35));
+    panel.setMaximumSize(new java.awt.Dimension(55, 35));
+    panel.setBorder(BorderFactory.createLineBorder(new Color(240, 240, 245)));
+    return panel;
+  }
+
+  // ==================== TASK DISPLAY ====================
+
+  /**
+   * Hiển thị tasks cho ngày được chọn
+   */
   private void showTasksForDate(String dateString) {
     selectedDateLabel.setText("Tasks for: " + dateString);
     taskListModel.clear();
 
-    List<TaskInfo> tasksForDay = dateTaskMap.get(dateString);
-    if (tasksForDay != null) {
-      for (TaskInfo task : tasksForDay) {
-        taskListModel.addElement(task.name + " (" + task.priority + " - " + task.status + ")");
+    List<TaskInfo> tasks = dateTaskMap.get(dateString);
+    if (tasks != null && !tasks.isEmpty()) {
+      for (TaskInfo task : tasks) {
+        String displayText = String.format("%s (%s - %s)",
+            task.name, task.priority, task.status);
+        taskListModel.addElement(displayText);
       }
-    }
-
-    if (taskListModel.isEmpty()) {
+    } else {
       taskListModel.addElement("No tasks scheduled for this date");
     }
   }
 
-  // Custom cell renderer for task list to show priority colors
+  // ==================== CUSTOM COMPONENTS ====================
+
+  /**
+   * Custom button cho ngày có tasks với indicator
+   */
+  private class TaskDayButton extends JButton {
+    private final List<TaskInfo> tasks;
+    private final Color indicatorColor;
+
+    TaskDayButton(int day, List<TaskInfo> tasks) {
+      super(String.valueOf(day));
+      this.tasks = tasks;
+      this.indicatorColor = getIndicatorColor(tasks);
+    }
+
+    private Color getIndicatorColor(List<TaskInfo> tasks) {
+      boolean hasHigh = tasks.stream().anyMatch(t -> "High".equals(t.priority));
+      boolean hasIncomplete = tasks.stream().anyMatch(t -> !"Completed".equals(t.status));
+
+      if (hasHigh)
+        return HIGH_PRIORITY_COLOR;
+      if (hasIncomplete)
+        return INCOMPLETE_COLOR;
+      return COMPLETED_COLOR;
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+      super.paintComponent(g);
+
+      // Vẽ indicator dot
+      int dotSize = 8;
+      int x = getWidth() - dotSize - 3;
+      int y = 3;
+
+      g.setColor(indicatorColor);
+      g.fillOval(x, y, dotSize, dotSize);
+    }
+  }
+
+  /**
+   * Custom cell renderer cho task list
+   */
   private class TaskListCellRenderer extends DefaultListCellRenderer {
     @Override
     public Component getListCellRendererComponent(JList<?> list, Object value,
@@ -416,6 +607,7 @@ public class DatePickerDialog extends JDialog {
       if (value != null) {
         String text = value.toString();
 
+        // Color coding theo priority
         if (text.contains("(High")) {
           label.setBackground(isSelected ? new Color(255, 150, 150) : new Color(255, 220, 220));
         } else if (text.contains("(Medium")) {
@@ -424,6 +616,7 @@ public class DatePickerDialog extends JDialog {
           label.setBackground(isSelected ? new Color(200, 255, 200) : new Color(230, 255, 230));
         }
 
+        // Icon theo status
         if (text.contains("- Completed")) {
           label.setText("✓ " + text);
         } else if (text.contains("- In Progress")) {
@@ -437,10 +630,14 @@ public class DatePickerDialog extends JDialog {
     }
   }
 
-  // For future expansion: Method to navigate to specific date
+  // ==================== PUBLIC API ====================
+
+  /**
+   * Navigate đến ngày cụ thể
+   */
   public void navigateToDate(String dateString) {
     try {
-      Date date = dateFormat.parse(dateString);
+      Date date = DATE_FORMAT.parse(dateString);
       calendar.setTime(date);
       updateCalendar();
       showTasksForDate(dateString);

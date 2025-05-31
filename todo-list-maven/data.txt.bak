@@ -1,0 +1,7 @@
+# Todo List App Data
+# Format: TaskName|DueDate|Priority|Status|IsPinned
+# Generated: 2025-05-28 20:21:32
+
+Complete Java assignment|2025-05-28|High|Pending|false
+Urgent client meeting|2025-05-28|High|In Progress|false
+Team lunch|2025-05-28|Low|Pending|false
