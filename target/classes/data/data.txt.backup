@@ -1,0 +1,13 @@
+# Todo List App Data
+# Format: TaskName|DueDate|Priority|Status|IsPinned
+# Generated: 2025-06-01 12:34:22
+
+Task Name|Due Date|Priority|Status|false
+Complete Java assignment|2025-05-28|High|Pending|false
+Buy groceries|2025-05-26|Medium|Pending|false
+Schedule dentist appointment|2025-06-15|Low|Pending|false
+Complete project documentation|2025-06-02|High|Completed|false
+Plan summer vacation|2025-07-15|Medium|In Progress|false
+Organize desktop files|2025-05-10|Low|Completed|false
+Research new software tools|2025-05-30|Medium|Pending|false
+kjhkj|2025-06-05|High|Pending|false

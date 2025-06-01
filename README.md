@@ -4,91 +4,134 @@
 
 ## 🚀 Tính năng chính
 
-- Thêm, sửa, xóa công việc.
-- Chọn ngày deadline bằng DatePicker.
-- Sắp xếp công việc theo ngày, độ ưu tiên.
-- Ghim các công việc quan trọng lên đầu danh sách.
-- Giao diện bảng hiển thị trực quan bằng `JTable`.
+- ✅ Thêm, sửa, xóa công việc
+- ✅ Chọn ngày deadline bằng DatePicker
+- ✅ Sắp xếp công việc theo ngày, độ ưu tiên
+- ✅ Ghim các công việc quan trọng lên đầu danh sách
+- ✅ Lưu/tải dữ liệu từ file
+- ✅ Import/Export danh sách công việc
+- ✅ Giao diện bảng hiển thị trực quan bằng JTable
 
 ## 🛠 Công nghệ sử dụng
 
-- Java 8+
-- Swing (GUI)
-- Maven (quản lý thư viện & build)
-- Kiến trúc MVC
+- **Java 11+** - Ngôn ngữ lập trình chính
+- **Swing** - Framework GUI
+- **Maven** - Quản lý dependencies và build
+- **MVC Pattern** - Kiến trúc phần mềm
 
-## 📦 Cách cài đặt & chạy
+## 📦 Cài đặt & Chạy
 
-### 1. Clone project
+### Yêu cầu hệ thống
+
+- Java 11 hoặc cao hơn
+- Maven 3.6+
+
+### Các bước chạy ứng dụng
 
 ```bash
-git clone https://github.com/ngocbinh15/todo-list-maven.git
+# 1. Clone repository
+git clone https://github.com/username/todo-list-maven.git
 cd todo-list-maven
-```
 
-### 2. Build bằng Maven
-
-#### Biên dịch dự án
-
-```bash
+# 2. Biên dịch project
 mvn clean compile
-```
 
-#### Đóng gói thành file JAR
-
-```bash
-mvn clean package
-```
-
-#### Chạy file JAR
-
-```bash
-java -jar target/todo-list-app-1.0.0-jar-with-dependencies.jar
-```
-
-### 3. Chạy ứng dụng
-
-```bash
+# 3. Chạy ứng dụng
 mvn exec:java
+
+# 4. Hoặc đóng gói thành JAR và chạy
+mvn clean package
+java -jar target/todo-list-app-1-jar-with-dependencies.jar
 ```
 
-> 💡 Nếu bạn dùng IDE như IntelliJ IDEA hoặc Eclipse, có thể mở project như một Maven project và chạy trực tiếp từ `ToDoListApp.java`.
+## 🖼 Giao diện ứng dụng
 
-## 🖼 Giao diện
+| Cửa sổ chính                                  | Dialog thêm task                              | Date Picker                                   |
+| --------------------------------------------- | --------------------------------------------- | --------------------------------------------- |
+| ![Main Window](./docs/images/main-window.png) | ![Task Dialog](./docs/images/task-dialog.png) | ![Date Picker](./docs/images/date-picker.png) |
 
-| Main Window            | Task Dialog              | Date Picker              |
-| ---------------------- | ------------------------ | ------------------------ |
-| ![alt text](image.png) | ![alt text](image-1.png) | ![alt text](image-2.png) |
+_Lưu ý: Nếu ảnh không hiển thị, hãy kiểm tra đường dẫn trong thư mục `docs/images/`_
 
-## 📁 Cấu trúc dự án
+## ⌨️ Phím tắt
+
+| Phím tắt   | Chức năng              |
+| ---------- | ---------------------- |
+| `Ctrl + N` | Thêm task mới          |
+| `Ctrl + S` | Lưu dữ liệu            |
+| `Ctrl + O` | Import dữ liệu từ file |
+| `Ctrl + E` | Export dữ liệu         |
+| `Delete`   | Xóa task đã chọn       |
+| `F2`       | Sửa task đã chọn       |
+
+## 📁 Cấu trúc project
 
 ```
-src/
-├── main/
-│   ├── java/
-│   │   └── com.todoapp/
-│   │       ├── models/         # Lớp dữ liệu (Task)
-│   │       ├── views/          # Giao diện (MainWindow, Dialogs)
-│   │       ├── controllers/    # Điều khiển logic
-│   │       ├── components/     # Thành phần giao diện tùy chỉnh (TaskTable)
-│   │       └── utils/          # Tiện ích (TaskManager, PinnedRowSorter)
-│   └── resources/
-│       └── icons/              # Icon ứng dụng
+todo-list-maven/
+├── src/
+│   └── main/
+│       ├── java/com/todoapp/
+│       │   ├── ToDoListApp.java        # Main class
+│       │   ├── models/
+│       │   │   └── Task.java           # Data model
+│       │   ├── views/
+│       │   │   ├── MainWindow.java     # Cửa sổ chính
+│       │   │   ├── TaskDialog.java     # Dialog thêm/sửa task
+│       │   │   └── DatePickerDialog.java # Dialog chọn ngày
+│       │   ├── controllers/
+│       │   │   └── TaskController.java # Logic điều khiển
+│       │   ├── components/
+│       │   │   └── TaskTable.java      # Bảng hiển thị task
+│       │   └── utils/
+│       │       ├── TaskManager.java    # Quản lý danh sách task
+│       │       ├── TaskStorage.java    # Lưu/tải dữ liệu
+│       │       ├── UserPreferences.java # Cài đặt người dùng
+│       │       └── PinnedRowSorter.java # Sắp xếp task ghim
+│       └── resources/
+│           ├── data/
+│           │   └── data.txt           # File lưu trữ task
+│           └── icons/
+│               └── icon.png           # Icon ứng dụng
+├── docs/
+│   └── images/                        # Screenshots cho README
+│       ├── main-window.png
+│       ├── task-dialog.png
+│       └── date-picker.png
+├── target/                            # Thư mục build (tự động tạo)
+├── pom.xml                           # Maven configuration
+└── README.md                         # File này
 ```
 
-## 📌 Định hướng phát triển
+## 🎯 Tính năng đã hoàn thành
 
-- [ ] Lưu danh sách ra file.
-- [ ] Nhập danh sách từ file.
-- [ ] Gắn tag / độ ưu tiên cho task.
-- [ ] Thêm tìm kiếm / lọc nâng cao.
-- [ ] Giao diện đẹp hơn (Look & Feel / FlatLaf).
+- [x] CRUD operations cho tasks
+- [x] Pin/unpin tasks quan trọng
+- [x] Sắp xếp theo priority và due date
+- [x] Date picker cho deadline
+- [x] Lưu/tải dữ liệu tự động
+- [x] Import/Export file
+- [x] Keyboard shortcuts
+- [x] Giao diện responsive
 
-## 📄 Giấy phép
+## 🚀 Roadmap
 
-Phần mềm được phát hành cho mục đích học tập / cá nhân. Nếu sử dụng lại, hãy ghi nguồn.
+- [ ] Thêm categories/tags cho tasks
+- [ ] Search và filter nâng cao
+- [ ] Dark mode
+- [ ] Notifications cho deadline
+- [ ] Export to PDF/Excel
+- [ ] Multi-language support
+
+## 📄 License
+
+Dự án này được phát hành dưới [MIT License](LICENSE).
+
+## 👨‍💻 Tác giả
+
+**Nguyễn Ngọc Bình**
+
+- Email: binh.nn.65cntt@ntu.edu.vn
+- GitHub: [@ngocbinh15](https://github.com/ngocbinh15)
 
 ---
 
-**Người phát triển:** Nguyễn Ngọc Bình  
-📧 Email liên hệ: binh.nn.65cntt@ntu.edu.vn
+⭐ Nếu project này hữu ích, hãy star repo để ủng hộ nhé!
