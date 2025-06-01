@@ -50,8 +50,6 @@ java -jar target/todo-list-app-1-jar-with-dependencies.jar
 | --------------------------------------------- | --------------------------------------------- | --------------------------------------------- |
 | ![Main Window](./docs/images/main-window.png) | ![Task Dialog](./docs/images/task-dialog.png) | ![Date Picker](./docs/images/date-picker.png) |
 
-_Lưu ý: Nếu ảnh không hiển thị, hãy kiểm tra đường dẫn trong thư mục `docs/images/`_
-
 ## ⌨️ Phím tắt
 
 | Phím tắt   | Chức năng              |
